@@ -1,4 +1,4 @@
-# Wechat Auto Reply Robot
+# Wechat Command-line Client
 
 
 ## Run
