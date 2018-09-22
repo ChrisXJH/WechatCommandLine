@@ -1,24 +1,6 @@
-const wchat4u = require('wechat4u');
-const qrcode = require('qrcode-terminal');
-let Wechat = new wchat4u();
-const controller = require('./controller.js')(Wechat);
+let wechatService = require('./services/wechatService.js');
+const display = require('./display.js');
+let controller = require('./controller.js')(wechatService, display);
 
-// Wechat.start();
-
-Wechat.on('uuid', uuid => {
-    qrcode.generate('https://login.weixin.qq.com/l/' + uuid, {
-        small: true
-    });
-    console.log('QR Code URL: ', 'https://login.weixin.qq.com/qrcode/' + uuid);
-});
-
-Wechat.on('login', () => {
-    console.log('Logged in successfully!');
-    controller.readInput();
-});
-
-Wechat.on('logout', () => {
-    console.log('Logged out successfully!');
-});
-
+wechatService.start();
 controller.readInput();

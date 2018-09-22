@@ -1,12 +1,15 @@
-module.exports = (function (Wechat) {
+module.exports = (function (wechatService, display) {
     const readline = require('readline');
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    const logger = console;
 
-    const SUPPORTED_COMMANDS = ['get', 'switch'];
+    const SUPPORTED_COMMANDS = ['switch', 'send'];
     const COMMAND_MAPPER = {
-        'get': getMessages
+        'switch': switchToContact,
+        'send': sendMessage
     };
+
+    let currentContactIndex;
+    
 
     function validateCommand(input) {
         const command = tokenizeInput(input)[0];
@@ -15,22 +18,60 @@ module.exports = (function (Wechat) {
         }
     }
 
-    function getMessages(args) {
-        console.log('getMessage: ', args);
-    }
-
     function tokenizeInput(input) {
-        return input.split(' ');
+        let tokens = input.split(' ');
+        if (tokens[0] == 'send') {
+            tokens = [tokens[0], input.match(/\".*\"/)[0].split('"')[1]];
+        }
+        return tokens;
     }
 
     function mapInput(input) {
         const inputTokens = tokenizeInput(input);
         const mappedCommand = COMMAND_MAPPER[inputTokens[0]];
         if (mappedCommand != null) {
-            mappedCommand(inputTokens.splice(1));
+            try {
+                mappedCommand(inputTokens.splice(1));
+            } catch (e) {
+                throw e;
+            }
         }
         else {
             throw `Failed to map input "${input}"`;
+        }
+    }
+
+    // Handling new message
+    wechatService.Emitter.on('newMessage', msg => {
+        if (msg.contactIndex == currentContactIndex) {
+            const dialog = wechatService.fetchDialogByUsername(msg.isSendBySelf ? msg.toUsername : msg.fromUsername);
+            display.printDialog(dialog);
+        }
+        else if (!msg.isSendBySelf) {
+            display.printNotification(`New message from ${msg.fromUserDisplayName}(${msg.contactIndex}).`);
+        }
+    });
+
+    function sendMessage(args) {
+        if (args.length <= 0 || args[0] == null) throw 'Invalid send command. Usage: send "<content>".';
+        const username = wechatService.getUsernameByIndex(currentContactIndex);
+        wechatService.sendMessage(args[0], username);
+    }
+
+
+    function switchToContact(args) {
+        let contacts = wechatService.getActiveContacts();
+        if (args == null || args.length <= 0) {
+            display.displayContactsWithIndex(contacts);
+        }
+        else if (contacts[args[0]] != null) {
+            currentContactIndex = args[0];
+            const contact = contacts[currentContactIndex];
+            display.printDialogName(contact.displayName);
+            display.printDialog(wechatService.fetchDialogByUsername(contact.username));
+        }
+        else {
+            throw `Invalid switch arguments. Usage: switch | switch <validIndex>`;
         }
     }
 
@@ -39,10 +80,9 @@ module.exports = (function (Wechat) {
             try {
                 validateCommand(input);
                 mapInput(input);
-                console.log(input);
             }
             catch (e) {
-                logger.error(e);
+                display.printError(e);
             }
         });
     }
