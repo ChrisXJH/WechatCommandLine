@@ -1,7 +1,7 @@
 module.exports = (function () {
     function printMessage(msg) {
         if (msg.isSendBySelf) {
-            console.log(`       [${msg.fromUserDisplayName}] ${msg.content}`);
+            console.log(`[我] ${msg.content}`);
         }
         else {
             console.log(`[${msg.fromUserDisplayName}] ${msg.content}`);

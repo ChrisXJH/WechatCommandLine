@@ -20,8 +20,8 @@ module.exports = (function (wechatService, display) {
 
     function tokenizeInput(input) {
         let tokens = input.split(' ');
-        if (tokens[0] == 'send') {
-            tokens = [tokens[0], input.match(/\".*\"/)[0].split('"')[1]];
+        if (tokens[0] === 'send') {
+            tokens = [tokens[0], input.match(/".*"/)[0].split('"')[1]];
         }
         return tokens;
     }
@@ -43,7 +43,7 @@ module.exports = (function (wechatService, display) {
 
     // Handling new message
     wechatService.Emitter.on('newMessage', msg => {
-        if (msg.contactIndex == currentContactIndex) {
+        if (msg.contactIndex === currentContactIndex) {
             const dialog = wechatService.fetchDialogByUsername(msg.isSendBySelf ? msg.toUsername : msg.fromUsername);
             display.printDialog(dialog);
         }
