@@ -7,7 +7,7 @@ npm install
 npm start
 ```
 ## 支持操作
-### 获取未读消息联系人
+### 获取最近联系人
 ```
 switch
 ```
