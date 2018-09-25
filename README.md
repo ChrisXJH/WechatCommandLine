@@ -1,9 +1,21 @@
 # Wechat Command-line Client
-上班也可以玩微信喔～
 
 ## Run
 
 ```
 npm install 
 npm start
+```
+## 支持操作
+### 获取未读消息联系人
+```
+switch
+```
+### 切换对话窗
+```
+switch <联系人id>
+```
+### 发送消息
+```
+send "消息文本"
 ```
