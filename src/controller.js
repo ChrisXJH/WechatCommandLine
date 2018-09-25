@@ -65,7 +65,7 @@ module.exports = (function (wechatService, display) {
             display.displayContactsWithIndex(contacts);
         }
         else if (contacts[args[0]] != null) {
-            currentContactIndex = args[0];
+            currentContactIndex = args[0] - 0;
             const contact = contacts[currentContactIndex];
             display.printDialogName(contact.displayName);
             display.printDialog(wechatService.fetchDialogByUsername(contact.username));
