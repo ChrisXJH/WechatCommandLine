@@ -1,4 +1,6 @@
 module.exports = (function () {
+    const qrcode = require('qrcode-terminal');
+
     function printMessage(msg) {
         if (msg.isSendBySelf) {
             console.log(`[我] ${msg.content}`);
@@ -14,6 +16,10 @@ module.exports = (function () {
 
     function printNotification(str) {
         console.log(`[NOTIFICATION] ${str}`);
+    }
+
+    function print(msg) {
+        console.log(msg);
     }
     
     function printError(err) {
@@ -33,12 +39,20 @@ module.exports = (function () {
         }
     }
 
+    function printQRCodeFromUrl(url) {
+        qrcode.generate(url, {
+            small: true
+        });
+    }
+
     return {
+        "print": print,
         "printMessage": printMessage,
         "printDialogName": printDialogName,
         "printNotification": printNotification,
         "printError": printError,
         "displayContactsWithIndex": displayContactsWithIndex,
-        "printDialog": printDialog
+        "printDialog": printDialog,
+        "printQRCodeFromUrl": printQRCodeFromUrl
     };
 })();

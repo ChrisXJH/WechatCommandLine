@@ -1,6 +1,5 @@
 module.exports = (function () {
     const EventEmitter = require('events');
-    const qrcode = require('qrcode-terminal');
     const wchat4u = require('wechat4u');
     class WechatServiceEmitter extends EventEmitter { }
 
@@ -26,11 +25,11 @@ module.exports = (function () {
      */
     let usernameToCacheIndexMapper = {};
 
-    function getUserIndexByUsername(username) {
+    function getUserIndexFromCacheByUsername(username) {
         return usernameToCacheIndexMapper[username];
     }
 
-    function updateUsernameIndexing(username) {
+    function updateUsernameCacheIndexing(username) {
         if (!usernameCache.includes(username)) {
             const newIndex = usernameCache.length;
             usernameCache.push(username);
@@ -38,25 +37,22 @@ module.exports = (function () {
             return newIndex;
         }
         else {
-            return getUserIndexByUsername(username);
+            return getUserIndexFromCacheByUsername(username);
         }
     }
 
     function addListeners() {
         Wechat.on('uuid', uuid => {
-            qrcode.generate('https://login.weixin.qq.com/l/' + uuid, {
-                small: true
-            });
-            console.log('QR Code URL: ', 'https://login.weixin.qq.com/qrcode/' + uuid);
+            Emitter.emit('qrcode', 'https://login.weixin.qq.com/l/' + uuid);
         });
 
         Wechat.on('login', () => {
             serviceReady = true;
-            console.log('Logged in successfully!');
+            Emitter.emit("login", null);
         });
 
         Wechat.on('logout', () => {
-            console.log('Logged out successfully!');
+            Emitter.emit('logout', null);
         });
 
         Wechat.on('message', (msg) => {
@@ -77,7 +73,7 @@ module.exports = (function () {
         let msgObj;
         switch (newMsg.MsgType) {
             case Wechat.CONF.MSGTYPE_TEXT: {
-                const contactIndex = newMsg.isSendBySelf ? updateUsernameIndexing(newMsg.ToUserName) : updateUsernameIndexing(fromUserName);
+                const contactIndex = newMsg.isSendBySelf ? updateUsernameCacheIndexing(newMsg.ToUserName) : updateUsernameCacheIndexing(fromUserName);
                 msgObj = {
                     "fromUsername": fromUserName,
                     "fromUserDisplayName": getUserDisplayNameByUsername(fromUserName),
@@ -96,7 +92,7 @@ module.exports = (function () {
         }
     }
 
-    function isSelfUsername(username) {
+    function isOwnUsername(username) {
         return Wechat.user.UserName == username;
     }
 
@@ -104,12 +100,12 @@ module.exports = (function () {
         return Wechat.contacts[username];
     }
 
-    function getContactDisplayNameByIndex(index) {
+    function getUserDisplayNameByCacheIndex(index) {
         return getUserDisplayNameByUsername(usernameCache[index]);
     }
 
     function getUserDisplayNameByUsername(username) {
-        if (!isSelfUsername(username)) {
+        if (!isOwnUsername(username)) {
             const contact = getUserContactByUsername(username);
             if (contact.OriginalRemarkName != null && contact.OriginalRemarkName != '') {
                 return contact.OriginalRemarkName;
@@ -126,10 +122,6 @@ module.exports = (function () {
         addListeners();
     }
 
-    function isServiceReady() {
-        return serviceReady;
-    }
-
     function getActiveContacts() {
         let contacts = [];
         for (var i = 0; i < usernameCache.length; i++) {
@@ -144,6 +136,7 @@ module.exports = (function () {
     function fetchDialogByUsername(username) {
         return messageCache[username] ? messageCache[username] : [];
     }
+
 
     function getUsernameByIndex(index) {
         return usernameCache[index];
@@ -162,9 +155,8 @@ module.exports = (function () {
 
     return {
         "start": startWechat,
-        "isServiceReady": isServiceReady,
         "Emitter": Emitter,
-        "getContactDisplayNameByIndex": getContactDisplayNameByIndex,
+        "getUserDisplayNameByCacheIndex": getUserDisplayNameByCacheIndex,
         "getActiveContacts": getActiveContacts,
         "fetchDialogByUsername": fetchDialogByUsername,
         "getUsernameByIndex": getUsernameByIndex,

@@ -1,15 +1,42 @@
 module.exports = (function (wechatService, display) {
     const readline = require('readline');
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-
     const SUPPORTED_COMMANDS = ['switch', 'send'];
     const COMMAND_MAPPER = {
         'switch': switchToContact,
         'send': sendMessage
     };
-
     let currentContactIndex;
-    
+
+    // Handle login event
+    wechatService.Emitter.on('login', () => {
+        console.log('Logged in successfully!');
+        readInput();
+    });
+
+    // Handle logout event
+    wechatService.Emitter.on('logout', () => {
+        console.log('Logged in successfully!');
+    });
+
+    // QR Code ready event
+    wechatService.Emitter.on('qrcode', url => {
+        display.print('Scan the QR code using WeChat Mobile to log in:\n');
+        display.printQRCodeFromUrl(url);
+        display.print(`QR Code URL: ${url}`);
+
+    });
+
+    // Handling new message
+    wechatService.Emitter.on('newMessage', msg => {
+        if (msg.contactIndex === currentContactIndex) {
+            const dialog = wechatService.fetchDialogByUsername(msg.isSendBySelf ? msg.toUsername : msg.fromUsername);
+            display.printDialog(dialog);
+        }
+        else if (!msg.isSendBySelf) {
+            display.printNotification(`New message from ${msg.fromUserDisplayName}(${msg.contactIndex}).`);
+        }
+    });
 
     function validateCommand(input) {
         const command = tokenizeInput(input)[0];
@@ -41,23 +68,11 @@ module.exports = (function (wechatService, display) {
         }
     }
 
-    // Handling new message
-    wechatService.Emitter.on('newMessage', msg => {
-        if (msg.contactIndex === currentContactIndex) {
-            const dialog = wechatService.fetchDialogByUsername(msg.isSendBySelf ? msg.toUsername : msg.fromUsername);
-            display.printDialog(dialog);
-        }
-        else if (!msg.isSendBySelf) {
-            display.printNotification(`New message from ${msg.fromUserDisplayName}(${msg.contactIndex}).`);
-        }
-    });
-
     function sendMessage(args) {
         if (args.length <= 0 || args[0] == null) throw 'Invalid send command. Usage: send "<content>".';
         const username = wechatService.getUsernameByIndex(currentContactIndex);
         wechatService.sendMessage(args[0], username);
     }
-
 
     function switchToContact(args) {
         let contacts = wechatService.getActiveContacts();
@@ -86,8 +101,4 @@ module.exports = (function (wechatService, display) {
             }
         });
     }
-
-    return {
-        "readInput": readInput
-    };
 });
