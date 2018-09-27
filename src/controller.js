@@ -1,12 +1,30 @@
 module.exports = (function (wechatService, display) {
     const readline = require('readline');
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    const SUPPORTED_COMMANDS = ['switch', 'send'];
+    const SUPPORTED_COMMANDS = ['contacts', 'switch', 'send'];
     const COMMAND_MAPPER = {
+        'contacts': listContacts,
         'switch': switchToContact,
         'send': sendMessage
     };
-    let currentContactIndex;
+
+    class Contact {
+        constructor(username, userDisplayName) {
+            this.username = username;
+            this.userDisplayName = userDisplayName;
+        }
+
+        getUsername() { return this.username; }
+
+        getUserDisplayName() { return this.userDisplayName; }
+
+        isSameContact(contact) { return contact.getUsername == this.username; }
+
+    };
+
+    let contacts = [];
+
+    let currentContact;
 
     // Handle login event
     wechatService.Emitter.on('login', () => {
@@ -24,19 +42,36 @@ module.exports = (function (wechatService, display) {
         display.print('Scan the QR code using WeChat Mobile to log in:\n');
         display.printQRCodeFromUrl(url);
         display.print(`QR Code URL: ${url}`);
-
     });
 
     // Handling new message
     wechatService.Emitter.on('newMessage', msg => {
-        if (msg.contactIndex === currentContactIndex) {
-            const dialog = wechatService.fetchDialogByUsername(msg.isSendBySelf ? msg.toUsername : msg.fromUsername);
-            display.printDialog(dialog);
+        if (currentContact && (msg.fromUsername === currentContact.getUsername()
+            || msg.isSendBySelf && msg.toUsername === currentContact.getUsername())) {
+            const conversation = wechatService.fetchConversationByUsername(msg.isSendBySelf ? msg.toUsername : msg.fromUsername);
+            display.printConversation(conversation, currentContact.getUserDisplayName());
         }
         else if (!msg.isSendBySelf) {
-            display.printNotification(`New message from ${msg.fromUserDisplayName}(${msg.contactIndex}).`);
+            if (isNewContact(msg.fromUsername)) {
+                contacts.push(new Contact(msg.fromUsername, msg.fromUserDisplayName));
+            }
+            display.printNotification(`New message from ${msg.fromUserDisplayName}.`);
         }
     });
+
+    function isNewContact(username) {
+        if (contacts.length <= 0) return true;
+        for (let con of contacts) {
+            if (con.getUsername() === username) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function listContacts() {
+        display.printContacts(contacts);
+    }
 
     function validateCommand(input) {
         const command = tokenizeInput(input)[0];
@@ -70,20 +105,15 @@ module.exports = (function (wechatService, display) {
 
     function sendMessage(args) {
         if (args.length <= 0 || args[0] == null) throw 'Invalid send command. Usage: send "<content>".';
-        const username = wechatService.getUsernameByIndex(currentContactIndex);
-        wechatService.sendMessage(args[0], username);
+        if (!currentContact) throw 'No conversation found.';
+        wechatService.sendMessage(args[0], currentContact.getUsername());
     }
 
     function switchToContact(args) {
-        let contacts = wechatService.getActiveContacts();
-        if (args == null || args.length <= 0) {
-            display.displayContactsWithIndex(contacts);
-        }
-        else if (contacts[args[0]] != null) {
-            currentContactIndex = args[0] - 0;
-            const contact = contacts[currentContactIndex];
-            display.printDialogName(contact.displayName);
-            display.printDialog(wechatService.fetchDialogByUsername(contact.username));
+        if (args && args.length > 0 && contacts[args[0]]) {
+            currentContact = contacts[args[0]];
+            display.printConversation(wechatService.fetchConversationByUsername(currentContact.getUsername())
+                , currentContact.getUserDisplayName());
         }
         else {
             throw `Invalid switch arguments. Usage: switch | switch <validIndex>`;

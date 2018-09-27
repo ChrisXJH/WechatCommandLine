@@ -10,10 +10,6 @@ module.exports = (function () {
         }
     }
 
-    function printDialogName(str) {
-        console.log(`DIALOG WITH: "${str}"`);
-    }
-
     function printNotification(str) {
         console.log(`[NOTIFICATION] ${str}`);
     }
@@ -26,14 +22,10 @@ module.exports = (function () {
         console.error(err);
     }
 
-    function displayContactsWithIndex(contacts) {
-        console.log('CONTACTS');
-        for (var i = 0; i < contacts.length; i++) {
-            console.log(`[${i}] ${contacts[i].displayName}`);
+    function printConversation(messages, withWhom) {
+        if (withWhom) {
+            print(`Conversation with "${withWhom}":`);
         }
-    }
-
-    function printDialog(messages) {
         for (var msg of messages) {
             printMessage(msg);
         }
@@ -45,14 +37,25 @@ module.exports = (function () {
         });
     }
 
+    function printContacts(contacts) {
+        for (let i = 0; i < contacts.length; i++) {
+            print(`[${i}] ${contacts[i].getUserDisplayName()}`);
+        }
+    }
+
+    function printList(list) {
+        for (let i = 0; i < list.length; i++) {
+            print(`[${i}] ${list[i]}`);
+        }
+    }
+
     return {
         "print": print,
         "printMessage": printMessage,
-        "printDialogName": printDialogName,
         "printNotification": printNotification,
         "printError": printError,
-        "displayContactsWithIndex": displayContactsWithIndex,
-        "printDialog": printDialog,
-        "printQRCodeFromUrl": printQRCodeFromUrl
+        "printConversation": printConversation,
+        "printQRCodeFromUrl": printQRCodeFromUrl,
+        "printContacts": printContacts
     };
 })();

@@ -12,34 +12,7 @@ module.exports = (function () {
      * Message Cache
      * <username, List<messages>>
      */
-    let messageCache = {};
-
-    /**
-     * Username Cache
-     */
-    let usernameCache = [];
-
-    /**
-     * Username to Cache Index Mapper
-     * <index, username>
-     */
-    let usernameToCacheIndexMapper = {};
-
-    function getUserIndexFromCacheByUsername(username) {
-        return usernameToCacheIndexMapper[username];
-    }
-
-    function updateUsernameCacheIndexing(username) {
-        if (!usernameCache.includes(username)) {
-            const newIndex = usernameCache.length;
-            usernameCache.push(username);
-            usernameToCacheIndexMapper[username] = newIndex;
-            return newIndex;
-        }
-        else {
-            return getUserIndexFromCacheByUsername(username);
-        }
-    }
+    let conversationCache = {};
 
     function addListeners() {
         Wechat.on('uuid', uuid => {
@@ -62,10 +35,10 @@ module.exports = (function () {
 
     function cacheNewMessage(msgObj) {
         let username = msgObj.isSendBySelf ? msgObj.toUsername : msgObj.fromUsername;
-        if (messageCache[username] == null) {
-            messageCache[username] = [];
+        if (conversationCache[username] == null) {
+            conversationCache[username] = [];
         }
-        messageCache[username].push(msgObj);
+        conversationCache[username].push(msgObj);
     }
 
     function handleNewMessage(newMsg) {
@@ -73,15 +46,13 @@ module.exports = (function () {
         let msgObj;
         switch (newMsg.MsgType) {
             case Wechat.CONF.MSGTYPE_TEXT: {
-                const contactIndex = newMsg.isSendBySelf ? updateUsernameCacheIndexing(newMsg.ToUserName) : updateUsernameCacheIndexing(fromUserName);
                 msgObj = {
                     "fromUsername": fromUserName,
                     "fromUserDisplayName": getUserDisplayNameByUsername(fromUserName),
                     "toUsername": newMsg.ToUserName,
                     "toUserDisplayName": getUserDisplayNameByUsername(newMsg.ToUserName),
                     "content": newMsg.Content,
-                    "isSendBySelf": newMsg.isSendBySelf,
-                    "contactIndex": contactIndex
+                    "isSendBySelf": newMsg.isSendBySelf
                 }
                 break;
             }
@@ -98,10 +69,6 @@ module.exports = (function () {
 
     function getUserContactByUsername(username) {
         return Wechat.contacts[username];
-    }
-
-    function getUserDisplayNameByCacheIndex(index) {
-        return getUserDisplayNameByUsername(usernameCache[index]);
     }
 
     function getUserDisplayNameByUsername(username) {
@@ -122,24 +89,8 @@ module.exports = (function () {
         addListeners();
     }
 
-    function getActiveContacts() {
-        let contacts = [];
-        for (var i = 0; i < usernameCache.length; i++) {
-            contacts[i] = {
-                "username": usernameCache[i],
-                "displayName": getUserDisplayNameByUsername(usernameCache[i])
-            };
-        }
-        return contacts;
-    }
-
-    function fetchDialogByUsername(username) {
-        return messageCache[username] ? messageCache[username] : [];
-    }
-
-
-    function getUsernameByIndex(index) {
-        return usernameCache[index];
+    function fetchConversationByUsername(username) {
+        return conversationCache[username] ? conversationCache[username] : [];
     }
 
     function sendMessage(msg, toUsername) {
@@ -156,10 +107,7 @@ module.exports = (function () {
     return {
         "start": startWechat,
         "Emitter": Emitter,
-        "getUserDisplayNameByCacheIndex": getUserDisplayNameByCacheIndex,
-        "getActiveContacts": getActiveContacts,
-        "fetchDialogByUsername": fetchDialogByUsername,
-        "getUsernameByIndex": getUsernameByIndex,
+        "fetchConversationByUsername": fetchConversationByUsername,
         "sendMessage": sendMessage
     };
 })();
