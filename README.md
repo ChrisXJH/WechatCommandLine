@@ -1,6 +1,6 @@
-# Wechat Command-line Client
+# 微信命令行客户端
 
-## Run
+## 运行
 
 ```
 npm install 
