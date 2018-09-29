@@ -1,11 +1,13 @@
 module.exports = (function (wechatService, display) {
     const readline = require('readline');
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    const SUPPORTED_COMMANDS = ['contacts', 'switch', 'send'];
+    const SUPPORTED_COMMANDS = ['contacts', 'switch', 'send', 'search', 'select'];
     const COMMAND_MAPPER = {
-        'contacts': listContacts,
+        'contacts': listActiveContacts,
         'switch': switchToContact,
-        'send': sendMessage
+        'send': sendMessage,
+        'search': searchContact,
+        'select': selectResult
     };
 
     class Contact {
@@ -21,6 +23,8 @@ module.exports = (function (wechatService, display) {
         isSameContact(contact) { return contact.getUsername == this.username; }
 
     };
+
+    let cache = {};
 
     let contacts = [];
 
@@ -47,7 +51,7 @@ module.exports = (function (wechatService, display) {
     // Handling new message
     wechatService.Emitter.on('newMessage', msg => {
         if (currentContact && (msg.fromUsername === currentContact.getUsername()
-            || msg.isSendBySelf && msg.toUsername === currentContact.getUsername())) {
+            || (msg.isSendBySelf && msg.toUsername === currentContact.getUsername()))) {
             const conversation = wechatService.fetchConversationByUsername(msg.isSendBySelf ? msg.toUsername : msg.fromUsername);
             display.printConversation(conversation, currentContact.getUserDisplayName());
         }
@@ -69,8 +73,17 @@ module.exports = (function (wechatService, display) {
         return true;
     }
 
-    function listContacts() {
+    function listActiveContacts() {
         display.printContacts(contacts);
+        updateCache(contacts);
+    }
+
+    function updateCache(obj) {
+        if (obj) cache = obj;
+    }
+
+    function getFromCache(key) {
+        return cache != null ? cache[key] : null;
     }
 
     function validateCommand(input) {
@@ -82,8 +95,9 @@ module.exports = (function (wechatService, display) {
 
     function tokenizeInput(input) {
         let tokens = input.split(' ');
-        if (tokens[0] === 'send') {
-            tokens = [tokens[0], input.match(/".*"/)[0].split('"')[1]];
+        if (tokens[0] === 'send' || tokens[0] === 'search') {
+            const param = input.match(/".*"/);
+            tokens = [tokens[0], param ? param[0].split('"')[1] : param];
         }
         return tokens;
     }
@@ -111,13 +125,39 @@ module.exports = (function (wechatService, display) {
 
     function switchToContact(args) {
         if (args && args.length > 0 && contacts[args[0]]) {
-            currentContact = contacts[args[0]];
-            display.printConversation(wechatService.fetchConversationByUsername(currentContact.getUsername())
-                , currentContact.getUserDisplayName());
+           switchToContactAction(args[0]);
         }
         else {
             throw `Invalid switch arguments. Usage: switch | switch <validIndex>`;
         }
+    }
+
+    function switchToContactAction(index) {
+        currentContact = contacts[index];
+        display.printConversation(wechatService.fetchConversationByUsername(currentContact.getUsername())
+            , currentContact.getUserDisplayName());
+    }
+
+    function searchContact(args) {
+        if (args.length <= 0 || args[0] == null) throw 'Invalid search command. Usage: search "<content>".';
+        const results = wechatService.searchContact(args[0]);
+        if (results != null && results.length > 0) {
+            let convertedContacts = [];
+            for (let contact of results) {
+                convertedContacts.push(new Contact(contact.username, contact.userDisplayName));
+            }
+            display.printContacts(convertedContacts);
+            updateCache(convertedContacts);
+        }
+        else {
+            display.print(`Could not find contact.`);
+        }
+    }
+
+    function selectResult(args) {
+        if (args.length <= 0 || args[0] == null) throw 'Invalid select command. Usage: select <index>.';
+        contacts.push(getFromCache(args[0]));
+        switchToContactAction(contacts.length - 1);
     }
 
     function readInput() {

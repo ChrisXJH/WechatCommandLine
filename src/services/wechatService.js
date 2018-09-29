@@ -6,7 +6,9 @@ module.exports = (function () {
     let Wechat = new wchat4u();
     let Emitter = new WechatServiceEmitter();
 
-    let serviceReady = false;
+    const PROPERTY_ORIGINAL_NICKNAME = 'OriginalNickName',
+        PROPERTY_ORIGINAL_REMARK_NAME = "OriginalRemarkName",
+        PROPERTY_USERNAME = "UserName";
 
     /**
      * Message Cache
@@ -71,13 +73,26 @@ module.exports = (function () {
         return Wechat.contacts[username];
     }
 
+    function getContactNickName(contact) {
+        return contact.OriginalNickName;
+    }
+
+    function getContactRemarkName(contact) {
+        return contact.OriginalRemarkName;
+    }
+
+    function getContactDisplayName(contact) {
+        const remarkName = getContactRemarkName(contact);
+        if (remarkName != null && remarkName != '') {
+            return remarkName;
+        }
+        return getContactNickName(contact);
+    }
+
     function getUserDisplayNameByUsername(username) {
         if (!isOwnUsername(username)) {
             const contact = getUserContactByUsername(username);
-            if (contact.OriginalRemarkName != null && contact.OriginalRemarkName != '') {
-                return contact.OriginalRemarkName;
-            }
-            return contact.OriginalNickName;
+            return getContactDisplayName(contact);
         }
         else {
             return Wechat.user.NickName;
@@ -104,10 +119,27 @@ module.exports = (function () {
         });
     }
 
+    function searchContact(str, isContains) {
+        let results = [];
+        for (let username in Wechat.contacts) {
+            if (Wechat.contacts.hasOwnProperty(username)
+                && (getContactNickName(Wechat.contacts[username]).includes(str)
+                    || getContactRemarkName(Wechat.contacts[username]).includes(str))) {
+                const contact = Wechat.contacts[username];
+                results.push({
+                    "username": contact[PROPERTY_USERNAME],
+                    "userDisplayName": getContactDisplayName(contact)
+                });
+            }
+        }
+        return results;
+    }
+
     return {
         "start": startWechat,
         "Emitter": Emitter,
         "fetchConversationByUsername": fetchConversationByUsername,
-        "sendMessage": sendMessage
+        "sendMessage": sendMessage,
+        "searchContact": searchContact
     };
 })();

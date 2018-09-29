@@ -9,7 +9,7 @@ npm start
 ## 支持操作
 ### 获取最近联系人
 ```
-switch
+contacts
 ```
 ### 切换对话窗
 ```
